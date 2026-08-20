@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validar:templates": "vitest run src/nucleo/validacao.test.ts",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "publicar": "bash scripts/publicar.sh"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

@@ -59,3 +59,30 @@ npm run build && npm run preview   # preview serve em /artefy/, como em produç�
 Documentação de projeto: [`docs/PRD.md`](docs/PRD.md),
 [`docs/MODELO-DE-DADOS.md`](docs/MODELO-DE-DADOS.md),
 [`docs/SINTAXE-DE-TEMPLATE.md`](docs/SINTAXE-DE-TEMPLATE.md).
+
+## Publicação
+
+O site já está publicado a partir da branch `gh-pages`. Para que ele apareça, ative uma vez
+em **Settings → Pages → Source: Deploy from a branch → `gh-pages` / `(root)`**.
+
+Depois de publicar mudanças:
+
+```bash
+npm run publicar   # roda as verificações, builda e atualiza a gh-pages
+```
+
+### Trocando para deploy automático
+
+O workflow do GitHub Actions está pronto em [`docs/workflow-pages.yml`](docs/workflow-pages.yml)
+— ele roda typecheck, lint, testes, validação de templates e build a cada push, e publica
+sozinho. Ele não pôde ser commitado direto porque criar arquivos em `.github/workflows/`
+exige um token com escopo `workflow`. Para ativar, do seu computador:
+
+```bash
+mkdir -p .github/workflows
+git mv docs/workflow-pages.yml .github/workflows/deploy.yml
+git commit -m "Ativa publicação pelo GitHub Actions" && git push
+```
+
+E então mude **Settings → Pages → Source** para **GitHub Actions**. A partir daí,
+`npm run publicar` deixa de ser necessário.
