@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "validar:templates": "vitest run src/nucleo/validacao.test.ts"
+    "validar:templates": "vitest run src/nucleo/validacao.test.ts",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
