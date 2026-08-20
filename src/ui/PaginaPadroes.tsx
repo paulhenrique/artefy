@@ -12,13 +12,11 @@ import {
   templateResolvido,
   temOverride,
 } from '../nucleo/estado';
-import { CHAVES_DE_EVENTO, validarTexto } from '../nucleo/validacao';
+import { CHAVES_DE_COMUNIDADE, CHAVES_DE_EVENTO, validarTexto } from '../nucleo/validacao';
 import { Campo } from './componentes';
 import { useDocumento } from './useDocumento';
 
 type Alvo = { caminho: string; nome: string; camada: string; variaveis: string[] };
-
-const CHAVES_DE_COMUNIDADE = ['nome', 'handle', 'descricao', 'identidadeVisual'];
 
 function comPrefixo(prefixo: string, chaves: readonly string[]): string[] {
   return chaves.map((chave) => `${prefixo}.${chave}`);
@@ -73,13 +71,15 @@ export function PaginaPadroes() {
 
   if (!alvo) return null;
 
-  const permitido = {
-    comunidade: CHAVES_DE_COMUNIDADE,
-    evento: CHAVES_DE_EVENTO,
-    arte: alvo.variaveis
-      .filter((variavel) => variavel.startsWith('arte.'))
-      .map((variavel) => variavel.slice('arte.'.length)),
-  };
+  // O que vale aqui é a lista da camada, não a união de tudo: a camada 0 não enxerga
+  // {{evento.*}}, e salvar um override que a usa faria o dado sumir calado do prompt.
+  const permitido: Partial<Record<'comunidade' | 'evento' | 'arte', string[]>> = {};
+  for (const namespace of ['comunidade', 'evento', 'arte'] as const) {
+    const chaves = alvo.variaveis
+      .filter((variavel) => variavel.startsWith(`${namespace}.`))
+      .map((variavel) => variavel.slice(namespace.length + 1));
+    if (chaves.length > 0) permitido[namespace] = chaves;
+  }
   const erros = validarTexto(rascunho, alvo.nome, permitido);
   const alterado = rascunho !== templateResolvido(documento, alvo.caminho);
 
@@ -112,6 +112,15 @@ export function PaginaPadroes() {
 
       {temOverride(documento, alvo.caminho) ? (
         <p className="aviso">Este template está sobrescrito neste navegador.</p>
+      ) : null}
+
+      {temOverride(documento, alvo.caminho) ? (
+        <details>
+          <summary className="ajuda" style={{ cursor: 'pointer', marginBottom: 8 }}>
+            Ver o padrão do repositório, para comparar
+          </summary>
+          <pre className="prompt">{templatePadrao(alvo.caminho)}</pre>
+        </details>
       ) : null}
 
       <Campo id="markdown" rotulo="Markdown">

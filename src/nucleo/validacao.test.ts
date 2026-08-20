@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { carregarCatalogo } from './catalogo';
-import { validarRepositorio, validarTexto } from './validacao';
+import { equivalenteNoEvento, validarRepositorio, validarTexto } from './validacao';
 
 /**
  * Este arquivo é o `npm run validar:templates`. Ele guarda as regras invioláveis de
@@ -38,7 +38,31 @@ describe('templates do repositório', () => {
   });
 });
 
+describe('equivalenteNoEvento', () => {
+  it('reprova slot com o nome literal de um campo do evento', () => {
+    for (const chave of ['nome', 'data', 'horario', 'local', 'cidade', 'formato', 'edicao']) {
+      expect(equivalenteNoEvento(chave), chave).toBe(`evento.${chave}`);
+    }
+  });
+
+  it('reprova os apelidos que significam a mesma coisa', () => {
+    expect(equivalenteNoEvento('nomeDoEvento')).toBe('evento.nome');
+    expect(equivalenteNoEvento('dataDoEvento')).toBe('evento.data');
+  });
+
+  it('deixa passar slot que é de fato da arte', () => {
+    expect(equivalenteNoEvento('nomePalestrante')).toBeNull();
+    expect(equivalenteNoEvento('horarioPalestra')).toBeNull();
+    expect(equivalenteNoEvento('formatoPeca')).toBeNull();
+  });
+});
+
 describe('validarTexto', () => {
+  it('não deixa a camada 0 usar {{evento.*}}', () => {
+    const erros = validarTexto('{{evento.nome}}', 'comunidade.md', { comunidade: ['nome'] });
+    expect(erros[0]?.tipo).toBe('namespace-desconhecido');
+  });
+
   it('reprova variável sem namespace', () => {
     const erros = validarTexto('olá {{nome}}', 'teste', { comunidade: ['nome'] });
     expect(erros[0]?.tipo).toBe('variavel-sem-namespace');

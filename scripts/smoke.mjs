@@ -11,13 +11,32 @@
 const BASE = process.env.BASE ?? 'http://localhost:4173/artefy/';
 const SHOTS = process.env.SHOTS ?? '/tmp/artefy-shots';
 
-let chromium;
-try {
-  ({ chromium } = await import('playwright'));
-} catch {
+/**
+ * ESM não olha NODE_PATH, então uma instalação global de playwright não é encontrada pelo
+ * import normal. Tentamos o resolve local e, se falhar, o diretório global do npm.
+ */
+async function carregarPlaywright() {
+  try {
+    return await import('playwright');
+  } catch {
+    /* tenta o global abaixo */
+  }
+  try {
+    const { execFileSync } = await import('node:child_process');
+    const { pathToFileURL } = await import('node:url');
+    const raiz = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+    return await import(pathToFileURL(`${raiz}/playwright/index.mjs`).href);
+  } catch {
+    return null;
+  }
+}
+
+const playwright = await carregarPlaywright();
+if (!playwright) {
   console.error('Playwright não encontrado. Instale com: npm i -D playwright && npx playwright install chromium');
   process.exit(2);
 }
+const { chromium } = playwright;
 
 const falhas = [];
 const ok = (nome, cond, extra = '') => {
@@ -103,6 +122,9 @@ await p.click('.chips button:has-text("é amanhã")');
 const contagem = await p.locator('pre.prompt').innerText();
 ok('derivou "é amanhã" sem digitar número', contagem.includes('é amanhã'));
 ok('contagem sem marcador solto', !contagem.includes('{{'));
+await p.click('button:has-text("Gerar a série")');
+const pecas = await p.locator('h2:has-text("Série completa") ~ .cartao').count();
+ok('série gera uma peça por marco', pecas > 1, `(${pecas} peça(s))`);
 await p.screenshot({ path: `${SHOTS}/04-contagem.png`, fullPage: true });
 
 console.log('8. padrões');
@@ -115,7 +137,7 @@ await p.click('nav a:has-text("Dados")');
 const doc = JSON.parse((await p.evaluate(() => localStorage.getItem('artefy:v1'))) ?? '{}');
 ok('documento tem schemaVersion', doc.schemaVersion === 1);
 ok('documento tem eventos', Array.isArray(doc.eventos) && doc.eventos.length === 1);
-ok('documento tem gerações', Array.isArray(doc.geracoes) && doc.geracoes.length >= 1);
+ok('documento tem gerações', Array.isArray(doc.geracoes) && doc.geracoes.length > 1);
 await p.screenshot({ path: `${SHOTS}/06-dados.png` });
 
 ok('sem erro no console', erros.length === 0, erros.join(' | '));

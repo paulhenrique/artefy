@@ -113,10 +113,14 @@ direto num componente.
 
 ## 8. Templates no repositório
 
-`templates/` é versionado no GitHub e servido junto com o build (copiado para o output, o
-que também garante funcionamento offline). A app carrega os templates de lá em runtime; se
-existir override local para aquele template, o override vence. Fonte e override sempre
-visíveis lado a lado na tela de padrões.
+`templates/` é versionado no GitHub e entra no bundle em tempo de build, importado como
+texto bruto. Isso cumpre o objetivo da seção 9 de forma mais forte do que copiar arquivos
+para o output: não há requisição de rede nenhuma no caminho principal, então a app funciona
+offline e não depende do repositório estar acessível.
+
+A edição definitiva de um template é um commit em `templates/`. Se existir override local
+para aquele template, o override vence em runtime; a tela de padrões mostra o override em
+edição e dá acesso ao padrão do repositório para comparação, além do botão de reset.
 
 ## 9. Restrições técnicas
 

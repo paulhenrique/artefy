@@ -43,12 +43,27 @@ export function contextoDoEvento(evento: Evento): Record<string, string> {
 }
 
 /**
- * Variáveis de `arte.*` que a app calcula em vez de o usuário digitar. Precisam estar
- * declaradas aqui para a validação de template aceitá-las (docs/SINTAXE-DE-TEMPLATE.md).
+ * Variáveis de `arte.*` que a app calcula em vez de o usuário digitar. Este registry é a
+ * única declaração delas: a validação de template, o editor de padrões e a UI leem daqui,
+ * então nenhum id de tipo de arte precisa aparecer cravado em outro lugar
+ * (docs/SINTAXE-DE-TEMPLATE.md).
  */
-export const DERIVADOS_DE_ARTE: Record<string, Record<string, readonly string[]>> = {
-  // derivado -> slots que o alimentam
-  'contagem-regressiva': { chamadaContagem: ['diasRestantes'] },
+export type Derivado = {
+  /** Slots que alimentam o cálculo. Contam como "usados" na validação. */
+  fontes: readonly string[];
+  calcular: (valores: Record<string, string>) => string;
+};
+
+export const DERIVADOS_DE_ARTE: Record<string, Record<string, Derivado>> = {
+  'contagem-regressiva': {
+    chamadaContagem: {
+      fontes: ['diasRestantes'],
+      calcular: (valores) => {
+        const dias = Number.parseInt(valores.diasRestantes ?? '', 10);
+        return Number.isFinite(dias) ? chamadaDeContagem(dias) : '';
+      },
+    },
+  },
 };
 
 /**
@@ -63,9 +78,8 @@ export function contextoDaArte(
   for (const slot of tipo.slots) {
     contexto[slot.chave] = (valores[slot.chave] ?? slot.padrao ?? '').trim();
   }
-  if (tipo.id === 'contagem-regressiva') {
-    const dias = Number.parseInt(contexto.diasRestantes ?? '', 10);
-    contexto.chamadaContagem = Number.isFinite(dias) ? chamadaDeContagem(dias) : '';
+  for (const [chave, derivado] of Object.entries(DERIVADOS_DE_ARTE[tipo.id] ?? {})) {
+    contexto[chave] = derivado.calcular(contexto);
   }
   return contexto;
 }

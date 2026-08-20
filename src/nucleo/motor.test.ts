@@ -46,6 +46,11 @@ describe('renderizar', () => {
     expect(() => renderizar('x{{/se}}', contexto)).toThrow(ErroDeTemplateAgregado);
   });
 
+  it('resolve condicional aninhada', () => {
+    const texto = '{{#se evento.local}}em {{#se evento.horario}}{{evento.horario}} {{/se}}{{evento.local}}{{/se}}';
+    expect(renderizar(texto, contexto)).toBe('em Coworking');
+  });
+
   it('preserva markdown com chave simples no meio', () => {
     expect(renderizar('```js\nconst a = { b: 1 };\n```', contexto)).toContain('{ b: 1 }');
   });

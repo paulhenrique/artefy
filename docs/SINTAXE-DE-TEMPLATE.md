@@ -22,8 +22,10 @@ erro de validação.
 {{#se arte.cargo}}Cargo: {{arte.cargo}}{{/se}}
 ```
 
-Renderiza o bloco apenas se o valor existir e não for string vazia. Não há `senão`, não há
-aninhamento. Um `{{#se}}` sem `{{/se}}` correspondente é erro de validação.
+Renderiza o bloco apenas se o valor existir e não for string vazia. Não há `senão`. O
+aninhamento funciona, mas prefira não usar: um template de prompt que precisa de dois níveis
+de condicional geralmente está tentando ser dois templates. Um `{{#se}}` sem `{{/se}}`
+correspondente — ou um `{{/se}}` sobrando — é erro de validação.
 
 ## Derivados
 

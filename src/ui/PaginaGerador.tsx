@@ -1,13 +1,26 @@
 import { useMemo, useState } from 'react';
 import { CAMINHO_COMUNIDADE, CAMINHO_EVENTO, carregarCatalogo } from '../nucleo/catalogo';
 import { chamadaDeContagem, diasAte, marcosDeContagem } from '../nucleo/datas';
-import { compor, pendencias } from '../nucleo/compositor';
+import { compor, DERIVADOS_DE_ARTE, pendencias } from '../nucleo/compositor';
 import { salvarGeracao, templateResolvido } from '../nucleo/estado';
 import type { Documento, Evento, Slot, TipoDeArte } from '../nucleo/tipos';
 import { ErroDeTemplateAgregado } from '../nucleo/tipos';
 import { BotaoCopiar, Campo } from './componentes';
 import { caminho, irPara } from './rotas';
 import { useDocumento } from './useDocumento';
+
+/**
+ * Numa arte de série (`serie: true` no front matter), qual slot guarda os dias. Sai do
+ * registry de derivados, para nenhum id de tipo de arte ficar cravado na UI.
+ */
+function chaveDeDias(tipo: TipoDeArte): string | null {
+  if (!tipo.serie) return null;
+  const fontes = Object.values(DERIVADOS_DE_ARTE[tipo.id] ?? {}).flatMap(
+    (derivado) => derivado.fontes,
+  );
+  const slot = tipo.slots.find((candidato) => candidato.tipo === 'numero' && fontes.includes(candidato.chave));
+  return slot?.chave ?? null;
+}
 
 function valoresIniciais(tipo: TipoDeArte, base?: Record<string, string>): Record<string, string> {
   const valores: Record<string, string> = {};
@@ -134,6 +147,7 @@ export function PaginaGerador({
     tipo ? valoresIniciais(tipo, origem?.valores) : {},
   );
   const [salvo, definirSalvo] = useState(false);
+  const [serie, definirSerie] = useState<{ dias: number; prompt: string }[] | null>(null);
 
   const resultado = useMemo(
     () => (evento && tipo ? montar(documento, evento, tipo, valores) : null),
@@ -153,10 +167,36 @@ export function PaginaGerador({
     );
   }
 
+  const chaveDia = chaveDeDias(tipo);
   const faltando = pendencias(tipo, valores);
   const mudar = (chave: string, valor: string): void => {
     definirValores((atual) => ({ ...atual, [chave]: valor }));
     definirSalvo(false);
+    definirSerie(null);
+  };
+
+  /** F4: a série inteira de uma vez, um prompt por marco, já salvos no histórico. */
+  const gerarSerie = (): void => {
+    if (!chaveDia) return;
+    const restantes = diasAte(evento.data);
+    if (restantes === null) return;
+
+    const pecas = marcosDeContagem(restantes).map((dias) => {
+      const valoresDoMarco = { ...valores, [chaveDia]: String(dias) };
+      return { dias, prompt: montar(documento, evento, tipo, valoresDoMarco).prompt, valoresDoMarco };
+    });
+
+    for (const peca of pecas) {
+      if (peca.prompt === '') continue;
+      salvarGeracao({
+        eventoId: evento.id,
+        tipoDeArteId: tipo.id,
+        rotulo: `${tipo.nome}: ${chamadaDeContagem(peca.dias)}`,
+        valores: peca.valoresDoMarco,
+        prompt: peca.prompt,
+      });
+    }
+    definirSerie(pecas.map(({ dias, prompt }) => ({ dias, prompt })));
   };
 
   const rotuloDaGeracao = (): string => {
@@ -173,11 +213,11 @@ export function PaginaGerador({
       <h1>{tipo.nome}</h1>
       <p className="ajuda">{tipo.descricao}</p>
 
-      {tipo.id === 'contagem-regressiva' ? (
+      {chaveDia ? (
         <MarcosDeContagem
           evento={evento}
-          valor={valores.diasRestantes ?? ''}
-          aoEscolher={(dias) => mudar('diasRestantes', dias)}
+          valor={valores[chaveDia] ?? ''}
+          aoEscolher={(dias) => mudar(chaveDia, dias)}
         />
       ) : null}
 
@@ -230,6 +270,33 @@ export function PaginaGerador({
       <p className="ajuda" aria-live="polite">
         {salvo ? 'Salvo no histórico deste evento.' : null}
       </p>
+
+      {chaveDia ? (
+        <>
+          <h2>Série completa</h2>
+          <p className="ajuda">
+            Gera de uma vez um prompt para cada marco até o evento, com o mesmo layout e só o
+            número mudando. Todos já entram no histórico.
+          </p>
+          <div className="acoes">
+            <button type="button" disabled={resultado.erro !== null} onClick={gerarSerie}>
+              Gerar a série
+            </button>
+          </div>
+
+          {serie?.map((peca) => (
+            <div key={peca.dias} className="cartao">
+              <strong>{chamadaDeContagem(peca.dias)}</strong>
+              <pre className="prompt" style={{ maxHeight: '30vh', marginTop: 10 }}>
+                {peca.prompt}
+              </pre>
+              <div className="acoes">
+                <BotaoCopiar texto={peca.prompt} rotulo="Copiar" primario={false} />
+              </div>
+            </div>
+          ))}
+        </>
+      ) : null}
     </>
   );
 }

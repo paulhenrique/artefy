@@ -33,6 +33,20 @@ describe('carregar', () => {
     expect(doc.eventos).toEqual([]);
     expect(localStorage.getItem(CHAVE_BACKUP)).toBe('{isso não é json');
   });
+
+  it('guarda backup também quando o JSON é válido mas a migração descarta dado', () => {
+    const bruto = JSON.stringify({ eventos: [{ nome: 'Sem data' }, { nome: 'Ok', data: '2026-03-12' }] });
+    localStorage.setItem(CHAVE, bruto);
+    const doc = carregar();
+    expect(doc.eventos).toHaveLength(1);
+    expect(localStorage.getItem(CHAVE_BACKUP)).toBe(bruto);
+  });
+
+  it('não guarda backup quando nada se perde', () => {
+    localStorage.setItem(CHAVE, JSON.stringify({ eventos: [{ nome: 'Ok', data: '2026-03-12' }] }));
+    carregar();
+    expect(localStorage.getItem(CHAVE_BACKUP)).toBeNull();
+  });
 });
 
 describe('migrar', () => {
@@ -81,12 +95,28 @@ describe('exportar e importar', () => {
         atualizadoEm: '2026-01-01T00:00:00.000Z',
       },
     ];
+    doc.geracoes = [
+      {
+        id: 'g1',
+        eventoId: 'e1',
+        tipoDeArteId: 'palestrante',
+        rotulo: 'Card de palestrante: Ana',
+        valores: { nomePalestrante: 'Ana', tituloPalestra: 'React sem medo' },
+        prompt: 'prompt congelado',
+        criadoEm: '2026-01-02T00:00:00.000Z',
+      },
+    ];
+    doc.overridesDeTemplate = { '/templates/comunidade.md': '# meu padrão' };
+
     const resultado = importar(exportar(doc));
     expect(resultado.ok).toBe(true);
     if (!resultado.ok) return;
     expect(resultado.documento.eventos[0]?.local).toBe('Coworking');
     expect(resultado.documento.eventos[0]?.formato).toBe('hibrido');
     expect(resultado.documento.comunidade.handle).toBe('@devitape');
+    expect(resultado.documento.geracoes[0]?.prompt).toBe('prompt congelado');
+    expect(resultado.documento.geracoes[0]?.valores.nomePalestrante).toBe('Ana');
+    expect(resultado.documento.overridesDeTemplate['/templates/comunidade.md']).toBe('# meu padrão');
   });
 
   it('recusa JSON inválido com mensagem legível', () => {

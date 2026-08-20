@@ -27,8 +27,11 @@ templates/            markdown versionado; comunidade.md, evento.md, artes/*.md
 docs/                 PRD e contratos
 src/nucleo/           domínio: armazenamento, motor de template, catálogo, compositor
 src/ui/               React, mobile-first, CSS próprio
-scripts/              validar-templates.mjs
+scripts/              smoke.mjs (Playwright), publicar.sh (gh-pages)
 ```
+
+A validação de templates mora em `src/nucleo/validacao.ts` e roda como teste
+(`src/nucleo/validacao.test.ts`), para não duplicar a lógica do motor.
 
 ## Comandos
 

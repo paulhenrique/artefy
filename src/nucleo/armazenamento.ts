@@ -128,6 +128,18 @@ export function migrar(bruto: unknown): Documento {
   };
 }
 
+function guardarBackup(local: Storage, bruto: string): void {
+  try {
+    local.setItem(CHAVE_BACKUP, bruto);
+  } catch {
+    /* cota cheia; seguir mesmo assim */
+  }
+}
+
+function quantidade(valor: unknown): number {
+  return Array.isArray(valor) ? valor.length : 0;
+}
+
 export function carregar(): Documento {
   const local = armazem();
   if (!local) return documentoPadrao();
@@ -135,17 +147,26 @@ export function carregar(): Documento {
   const bruto = local.getItem(CHAVE);
   if (bruto === null) return documentoPadrao();
 
+  let analisado: unknown;
   try {
-    return migrar(JSON.parse(bruto));
+    analisado = JSON.parse(bruto);
   } catch {
     // Documento ilegível: guarda o original antes de partir do zero, para não perder nada.
-    try {
-      local.setItem(CHAVE_BACKUP, bruto);
-    } catch {
-      /* cota cheia; seguir mesmo assim */
-    }
+    guardarBackup(local, bruto);
     return documentoPadrao();
   }
+
+  const documento = migrar(analisado);
+
+  // JSON válido mas de forma errada também é documento corrompido: a migração descarta o
+  // que não dá para converter, então o bruto precisa ficar guardado do mesmo jeito.
+  const cru = (analisado ?? {}) as Record<string, unknown>;
+  const perdeu =
+    quantidade(cru.eventos) > documento.eventos.length ||
+    quantidade(cru.geracoes) > documento.geracoes.length;
+  if (perdeu) guardarBackup(local, bruto);
+
+  return documento;
 }
 
 export function salvar(documento: Documento): Documento {

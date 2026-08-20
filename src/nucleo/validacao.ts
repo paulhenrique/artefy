@@ -20,23 +20,33 @@ export const CHAVES_DE_EVENTO = Object.keys(
   }),
 );
 
-const CHAVES_DE_COMUNIDADE = ['nome', 'handle', 'descricao', 'identidadeVisual'];
+export const CHAVES_DE_COMUNIDADE = ['nome', 'handle', 'descricao', 'identidadeVisual'];
 
-/** Nomes de slot que só existem para repetir um campo do evento. */
+/**
+ * Apelidos que não são chave literal do evento mas significam a mesma coisa. As chaves
+ * literais (`nome`, `data`, `local`, …) são pegas direto de CHAVES_DE_EVENTO, para a lista
+ * não ficar para trás quando um campo novo entrar no evento.
+ */
 const APELIDOS_PROIBIDOS: Record<string, string> = {
   nomeEvento: 'evento.nome',
+  nomeDoEvento: 'evento.nome',
   tituloEvento: 'evento.nome',
+  tituloDoEvento: 'evento.nome',
   dataEvento: 'evento.data',
   dataDoEvento: 'evento.data',
   horarioEvento: 'evento.horario',
   horarioDoEvento: 'evento.horario',
   localEvento: 'evento.local',
   localDoEvento: 'evento.local',
-  cidade: 'evento.cidade',
-  linkInscricao: 'evento.linkInscricao',
-  hashtag: 'evento.hashtag',
-  edicao: 'evento.edicao',
+  cidadeDoEvento: 'evento.cidade',
+  linkDeInscricao: 'evento.linkInscricao',
 };
+
+/** O slot repete um campo do evento? Devolve a variável que deveria ser usada. */
+export function equivalenteNoEvento(chave: string): string | null {
+  if (CHAVES_DE_EVENTO.includes(chave)) return `evento.${chave}`;
+  return APELIDOS_PROIBIDOS[chave] ?? null;
+}
 
 function separar(caminho: string): [string, string] {
   const [ns = '', chave = ''] = caminho.split('.');
@@ -87,7 +97,7 @@ export function validarTipoDeArte(tipo: TipoDeArte): ErroDeTemplate[] {
   });
 
   for (const slot of tipo.slots) {
-    const equivalente = APELIDOS_PROIBIDOS[slot.chave];
+    const equivalente = equivalenteNoEvento(slot.chave);
     if (equivalente) {
       problemas.push({
         tipo: 'slot-duplica-evento',
@@ -105,8 +115,8 @@ export function validarTipoDeArte(tipo: TipoDeArte): ErroDeTemplate[] {
   );
   // Um slot também conta como usado quando alimenta um derivado que aparece no corpo
   // (ex.: `diasRestantes` só existe para virar `chamadaContagem`).
-  for (const [derivado, fontes] of Object.entries(derivados)) {
-    if (usadas.has(derivado)) for (const fonte of fontes) usadas.add(fonte);
+  for (const [chave, derivado] of Object.entries(derivados)) {
+    if (usadas.has(chave)) for (const fonte of derivado.fontes) usadas.add(fonte);
   }
 
   for (const slot of tipo.slots) {
