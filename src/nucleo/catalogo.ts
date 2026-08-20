@@ -33,7 +33,7 @@ export function templatePadrao(caminho: string): string {
 type FrontMatter = { dados: Record<string, unknown> | null; corpo: string };
 
 export function separarFrontMatter(bruto: string): FrontMatter {
-  const texto = bruto.replace(/^﻿/, '');
+  const texto = bruto.replace(/^\uFEFF/, '');
   const achado = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(texto);
   if (!achado || achado[1] === undefined) return { dados: null, corpo: texto.trim() };
   const dados = yaml.load(achado[1]);
