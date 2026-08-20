@@ -19,8 +19,9 @@ export default tseslint.config(
     },
   },
   {
+    // O smoke test roda em Node mas avalia trechos dentro do navegador.
     files: ['scripts/**/*.mjs'],
     extends: [js.configs.recommended],
-    languageOptions: { globals: globals.node },
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 );
